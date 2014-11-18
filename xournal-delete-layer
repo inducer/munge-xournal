@@ -1,0 +1,49 @@
+#! /usr/bin/env python3
+
+import gzip
+import argparse
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', metavar="INPUT.XOJ")
+    parser.add_argument('output', metavar="OUTPUT.XOJ")
+    parser.add_argument(
+        'layers', metavar='LAYER', type=int, nargs='*',
+        help='Layers to delete, 1-based')
+
+    args = parser.parse_args()
+
+    with gzip.open(args.input, "rb") as inf:
+        lines = list(inf.readlines())
+
+    out_lines = []
+    i = 0
+
+    ignoring_layer = False
+
+    while i < len(lines):
+        l = lines[i]
+        i += 1
+
+        if ignoring_layer:
+            if l.strip().startswith(b"</layer"):
+                ignoring_layer = False
+        else:
+            if l.strip().startswith(b"<page"):
+                layer_idx = 0
+                out_lines.append(l)
+            elif l.strip().startswith(b"<layer"):
+                layer_idx += 1
+                if layer_idx in args.layers:
+                    ignoring_layer = True
+                else:
+                    out_lines.append(l)
+            else:
+                out_lines.append(l)
+
+    with gzip.open(args.output, "wb") as outf:
+        outf.write(b"\n".join(out_lines))
+
+if __name__ == "__main__":
+    main()
