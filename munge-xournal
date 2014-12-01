@@ -25,7 +25,7 @@ def main():
         required=True)
     parser.add_argument('inputs', metavar="INPUT.XOJ[@m:n]", nargs="+")
     parser.add_argument(
-        '--delete-layers', metavar='LAYER', type=int, nargs='*',
+        '-d', '--delete-layers', metavar='LAYER', type=int, nargs='*',
         help='Layers to delete, 1-based', default=[])
 
     args = parser.parse_args()
