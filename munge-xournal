@@ -4,15 +4,6 @@ import gzip
 import argparse
 import re
 
-HEADER = (  # noqa
-b"""<?xml version="1.0" standalone="no"?>
-<xournal version="0.4.8">
-<title>Xournal document - \
-see http://math.mit.edu/~auroux/software/xournal/</title>
-""")
-
-FOOTER = b"</xournal>"
-
 
 PAGE_RE = re.compile(r"^(.+)\@([-:,0-9]+)$")
 RANGE_RE = re.compile(r"^([-0-9]*)\:([-0-9]*)$")
@@ -30,9 +21,9 @@ def main():
 
     args = parser.parse_args()
 
-    out_lines = [HEADER]
+    out_lines = []
 
-    for input_name in args.inputs:
+    for i_input, input_name in enumerate(args.inputs):
         page_slices = []
         page_match = PAGE_RE.match(input_name)
         if page_match is not None:
@@ -65,11 +56,8 @@ def main():
         with gzip.open(input_name, "rb") as inf:
             lines = list(inf.readlines())
 
-        assert lines[0].startswith(b"<?xml")
-        assert lines[1].startswith(b"<xournal ")
-        assert lines[2].startswith(b"<title>")
-        assert lines[-1].startswith(b"</xournal>")
-        lines = lines[3:-1]
+        assert lines[-1].strip() == b"</xournal>"
+        lines = lines[:-1]
 
         num_pages = len([
             l for l in lines if l.strip().startswith(b"<page")
@@ -83,6 +71,15 @@ def main():
 
         i = 0
 
+        # {{{ skip/copy header
+
+        while not lines[i].startswith(b"<page"):
+            # only copy header for first document
+            if i_input == 0:
+                out_lines.append(lines[i])
+            i += 1
+
+        # }}}
         ignoring_layer = False
         ignoring_page = False
 
@@ -114,7 +111,7 @@ def main():
                 else:
                     out_lines.append(l)
 
-    out_lines.append(FOOTER)
+    out_lines.append(b"</xournal>")
 
     with gzip.open(args.output, "wb") as outf:
         outf.write(b"".join(out_lines))
