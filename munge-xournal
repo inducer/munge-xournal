@@ -21,9 +21,9 @@ RANGE_RE = re.compile(r"^([-0-9]*)\:([-0-9]*)$")
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-o', '--output', metavar="OUTPUT.XOJ",
+        '-o', '--output', metavar="OUTPUT.XO{J,PP}",
         required=True)
-    parser.add_argument('inputs', metavar="INPUT.XOJ[@m:n]", nargs="+")
+    parser.add_argument('inputs', metavar="INPUT.XO{J,PP}[@m:n]", nargs="+")
     parser.add_argument(
         '-d', '--delete-layers', metavar='LAYER', type=int, nargs='*',
         help='Layers to delete, 1-based', default=[])
