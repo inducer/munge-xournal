@@ -7,6 +7,10 @@ import re
 
 PAGE_RE = re.compile(r"^(.+)\@([-:,0-9]+)$")
 RANGE_RE = re.compile(r"^([-0-9]*)\:([-0-9]*)$")
+BACKGROUND_ATTRS_RE = re.compile(
+        r'^<background\s*(.*)\s*\/>$'
+        )
+BACKGROUND_ATTR_RE = re.compile(r'^([a-z]+)\=\"([^"]*)\"\s*')
 
 
 def main():
@@ -94,33 +98,70 @@ def main():
         ignoring_layer = False
         ignoring_page = False
 
+        last_background_pdf_attrs = {}
+        had_pdf_filename = False
+
         page_idx = -1
         while i < len(lines):
-            l = lines[i]
+            line = lines[i]
             i += 1
 
+            is_pdf_filename = False
+
+            if line.startswith(b"<background"):
+                background_attrs_match = BACKGROUND_ATTRS_RE.match(
+                        line.decode().strip())
+                assert background_attrs_match
+
+                attrs_str = background_attrs_match.group(1)
+                attrs = {}
+                while True:
+                    attr_match = BACKGROUND_ATTR_RE.match(attrs_str)
+                    if attr_match:
+                        attrs[attr_match.group(1)] = attr_match.group(2)
+                        attrs_str = attrs_str[attr_match.end():]
+                    else:
+                        assert not attrs_str.strip(), attrs_str
+                        break
+
+                if attrs["type"] == "pdf":
+                    if "filename" in attrs:
+                        last_background_pdf_attrs["filename"] = attrs["filename"]
+                        last_background_pdf_attrs["domain"] = attrs["domain"]
+                        is_pdf_filename = True
+
+                    elif not had_pdf_filename:
+                        attrs.update(last_background_pdf_attrs)
+                        new_attrs_str = b" ".join(
+                                b'%s="%s"' % (k.encode(), v.encode())
+                                for k, v in attrs.items())
+                        line = b"<background %s/>\n" % new_attrs_str
+
             if ignoring_page:
-                if l.strip().startswith(b"</page"):
+                if line.strip().startswith(b"</page"):
                     ignoring_page = False
             elif ignoring_layer:
-                if l.strip().startswith(b"</layer"):
+                if line.strip().startswith(b"</layer"):
                     ignoring_layer = False
             else:
-                if l.strip().startswith(b"<page"):
+                if line.strip().startswith(b"<page"):
                     layer_idx = 0
                     page_idx += 1
                     if page_idx not in pages:
                         ignoring_page = True
                     else:
-                        out_lines.append(l)
-                elif l.strip().startswith(b"<layer"):
+                        out_lines.append(line)
+                elif line.strip().startswith(b"<layer"):
                     layer_idx += 1
                     if layer_idx in args.delete_layers:
                         ignoring_layer = True
                     else:
-                        out_lines.append(l)
+                        out_lines.append(line)
                 else:
-                    out_lines.append(l)
+                    if is_pdf_filename:
+                        had_pdf_filename = True
+
+                    out_lines.append(line)
 
     out_lines.append(b"</xournal>")
 
