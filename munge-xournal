@@ -24,6 +24,9 @@ def main():
     out_lines = []
 
     for i_input, input_name in enumerate(args.inputs):
+
+        # {{{ parse page_slices
+
         page_slices = []
         page_match = PAGE_RE.match(input_name)
         if page_match is not None:
@@ -48,10 +51,17 @@ def main():
                     page_slices.append(slice(start, end))
                 else:
                     p = int(page_range)
-                    page_slices.append(slice(p-1, p))
+                    if p > 0:
+                        page_slices.append(slice(p-1, p))
+                    elif p == -1:
+                        page_slices.append(slice(p, None))
+                    else:
+                        page_slices.append(slice(p, p+1))
 
         else:
             page_slices.append(slice(None))
+
+        # }}}
 
         with gzip.open(input_name, "rb") as inf:
             lines = list(inf.readlines())
@@ -80,6 +90,7 @@ def main():
             i += 1
 
         # }}}
+
         ignoring_layer = False
         ignoring_page = False
 
@@ -116,5 +127,8 @@ def main():
     with gzip.open(args.output, "wb") as outf:
         outf.write(b"".join(out_lines))
 
+
 if __name__ == "__main__":
     main()
+
+# vim: foldmethod=marker
